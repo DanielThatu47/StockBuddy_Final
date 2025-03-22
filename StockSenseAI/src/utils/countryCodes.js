@@ -1,0 +1,33 @@
+// List of country codes for phone numbers
+export const countryCodes = [
+  { code: '+1', country: 'United States/Canada', flag: '🇺🇸' },
+  { code: '+44', country: 'United Kingdom', flag: '🇬🇧' },
+  { code: '+91', country: 'India', flag: '🇮🇳' },
+  { code: '+61', country: 'Australia', flag: '🇦🇺' },
+  { code: '+55', country: 'Brazil', flag: '🇧🇷' },
+  { code: '+86', country: 'China', flag: '🇨🇳' },
+  { code: '+33', country: 'France', flag: '🇫🇷' },
+  { code: '+49', country: 'Germany', flag: '🇩🇪' },
+  { code: '+81', country: 'Japan', flag: '🇯🇵' },
+  { code: '+52', country: 'Mexico', flag: '🇲🇽' },
+  { code: '+65', country: 'Singapore', flag: '🇸🇬' },
+  { code: '+27', country: 'South Africa', flag: '🇿🇦' },
+  { code: '+82', country: 'South Korea', flag: '🇰🇷' },
+  { code: '+34', country: 'Spain', flag: '🇪🇸' },
+  { code: '+41', country: 'Switzerland', flag: '🇨🇭' },
+  { code: '+971', country: 'United Arab Emirates', flag: '🇦🇪' },
+  { code: '+39', country: 'Italy', flag: '🇮🇹' },
+  { code: '+31', country: 'Netherlands', flag: '🇳🇱' },
+  { code: '+64', country: 'New Zealand', flag: '🇳🇿' },
+  { code: '+92', country: 'Pakistan', flag: '🇵🇰' },
+  { code: '+63', country: 'Philippines', flag: '🇵🇭' },
+  { code: '+7', country: 'Russia', flag: '🇷🇺' },
+  { code: '+966', country: 'Saudi Arabia', flag: '🇸🇦' },
+  { code: '+94', country: 'Sri Lanka', flag: '🇱🇰' },
+  { code: '+46', country: 'Sweden', flag: '🇸🇪' },
+  { code: '+66', country: 'Thailand', flag: '🇹🇭' },
+  { code: '+90', country: 'Turkey', flag: '🇹🇷' },
+  { code: '+84', country: 'Vietnam', flag: '🇻🇳' },
+];
+
+export default countryCodes; 
