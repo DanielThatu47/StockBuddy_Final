@@ -50,6 +50,9 @@ router.post('/', auth, async (req, res) => {
     return res.status(400).json({ message: 'Symbol is required' });
   }
   
+  // Default to 3 days ahead for faster predictions
+  const predictionDays = daysAhead || 3;
+  
   try {
     // First check if there's any pending/running prediction for this user and symbol
     const existingPrediction = await Prediction.findOne({
@@ -73,8 +76,9 @@ router.post('/', auth, async (req, res) => {
       body: JSON.stringify({
         userId: req.userId,
         symbol,
-        daysAhead: daysAhead || 5
+        daysAhead: predictionDays
       }),
+      timeout: 10000 // Add 10 second timeout
     });
     
     const data = await response.json();
@@ -92,7 +96,7 @@ router.post('/', auth, async (req, res) => {
     const newPrediction = new Prediction({
       userId: req.userId,
       symbol: symbol.toUpperCase(),
-      daysAhead: daysAhead || 5,
+      daysAhead: predictionDays,
       status: 'pending',
       taskId: data.taskId,
       predictions: []
@@ -119,7 +123,7 @@ router.post('/', auth, async (req, res) => {
           body: JSON.stringify({
             userId: req.userId,
             symbol,
-            daysAhead: daysAhead || 5
+            daysAhead: predictionDays
           }),
         });
         
@@ -138,7 +142,7 @@ router.post('/', auth, async (req, res) => {
         const newPrediction = new Prediction({
           userId: req.userId,
           symbol: symbol.toUpperCase(),
-          daysAhead: daysAhead || 5,
+          daysAhead: predictionDays,
           status: 'pending',
           taskId: data.taskId,
           predictions: [],
@@ -179,27 +183,51 @@ router.get('/status/:taskId', auth, async (req, res) => {
     
     // Call the model API to get status
     const response = await fetch(`${MODEL_API_URL}/api/predict/status/${taskId}`);
-    const data = await response.json();
     
-    if (!response.ok) {
-      return res.status(response.status).json(data);
-    }
-    
-    // Update the prediction if completed
-    if (data.status === 'completed' && prediction.status !== 'completed') {
-      prediction.status = 'completed';
-      prediction.predictions = data.result.predictions;
-      prediction.sentiment = data.result.sentiment;
+    try {
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return res.status(response.status).json(data);
+      }
+      
+      // Update the prediction if completed
+      if (data.status === 'completed' && prediction.status !== 'completed') {
+        prediction.status = 'completed';
+        if (data.result && data.result.predictions) {
+          prediction.predictions = data.result.predictions;
+          prediction.sentiment = data.result.sentiment;
+          await prediction.save();
+        } else {
+          console.error('Completed prediction missing predictions data:', data);
+          return res.status(500).json({ message: 'Invalid prediction data format' });
+        }
+      } else if (data.status === 'failed' && prediction.status !== 'failed') {
+        prediction.status = 'failed';
+        prediction.error = data.error || 'Unknown error occurred';
+        await prediction.save();
+      } else if (data.status !== prediction.status) {
+        prediction.status = data.status;
+        await prediction.save();
+      }
+      
+      res.json({
+        ...data,
+        id: prediction._id
+      });
+    } catch (jsonError) {
+      console.error('Error parsing prediction status JSON response:', jsonError.message);
+      
+      // Update prediction to error state if parsing fails
+      prediction.status = 'failed';
+      prediction.error = 'Error parsing prediction result';
       await prediction.save();
-    } else if (data.status !== prediction.status) {
-      prediction.status = data.status;
-      await prediction.save();
+      
+      return res.status(500).json({ 
+        message: 'Invalid response from prediction service', 
+        error: jsonError.message 
+      });
     }
-    
-    res.json({
-      ...data,
-      id: prediction._id
-    });
   } catch (err) {
     console.error('Error checking prediction status:', err.message);
     res.status(500).json({ message: 'Server error' });

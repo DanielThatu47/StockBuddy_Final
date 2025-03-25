@@ -9,6 +9,7 @@ import AuthNavigator from './AuthNavigator';
 
 // Import screens
 import SearchScreen from '../screens/main/SearchScreen';
+import StockDetailScreen from '../screens/main/StockDetailScreen';
 import AccountInfoScreen from '../screens/settings/AccountInfoScreen';
 import PreferencesScreen from '../screens/settings/PreferencesScreen';
 import NotificationsScreen from '../screens/settings/NotificationsScreen';
@@ -75,6 +76,11 @@ const AppNavigator = () => {
           <Stack.Screen
             name="Search"
             component={SearchScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="StockDetail"
+            component={StockDetailScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

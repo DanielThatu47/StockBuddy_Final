@@ -1,20 +1,60 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/Header';
 import Colors from '../../constants/colors';
+import FinnhubService from '../../services/FinnhubService';
 
 const SearchScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [recentSearches] = useState(['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA']);
+  const [recentSearches, setRecentSearches] = useState(['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA']);
+  const [searchResults, setSearchResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSearch = (query) => {
-    // Implement search functionality
-    console.log('Searching for:', query);
+  // Search for stocks using the API
+  const handleSearch = async (query) => {
+    if (!query.trim()) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const results = await FinnhubService.searchStocks(query);
+      setSearchResults(FinnhubService.formatSearchResults(results));
+      
+      // Add to recent searches if not already present
+      if (!recentSearches.includes(query) && query.length > 1) {
+        setRecentSearches(prev => [query, ...prev].slice(0, 5));
+      }
+    } catch (err) {
+      setError('Failed to search stocks. Please try again.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Debounce search to prevent too many API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.length > 1) {
+        handleSearch(searchQuery);
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const clearSearch = () => {
     setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const handleStockSelect = (stock) => {
+    navigation.navigate('StockDetail', { symbol: stock.symbol });
   };
 
   const renderRecentSearch = ({ item }) => (
@@ -27,6 +67,19 @@ const SearchScreen = ({ navigation }) => {
     >
       <Ionicons name="time-outline" size={20} color={Colors.darkGray} />
       <Text style={styles.recentSearchText}>{item}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderSearchResult = ({ item }) => (
+    <TouchableOpacity
+      style={styles.searchResultItem}
+      onPress={() => handleStockSelect(item)}
+    >
+      <View style={styles.searchResultContent}>
+        <Text style={styles.symbolText}>{item.symbol}</Text>
+        <Text style={styles.descriptionText} numberOfLines={1}>{item.description}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color={Colors.darkGray} />
     </TouchableOpacity>
   );
 
@@ -58,13 +111,39 @@ const SearchScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.sectionTitle}>Recent Searches</Text>
-        <FlatList
-          data={recentSearches}
-          renderItem={renderRecentSearch}
-          keyExtractor={(item) => item}
-          showsVerticalScrollIndicator={false}
-        />
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        )}
+        
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : null}
+
+        {searchResults.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>Results</Text>
+            <FlatList
+              data={searchResults}
+              renderItem={renderSearchResult}
+              keyExtractor={(item) => item.symbol}
+              showsVerticalScrollIndicator={false}
+            />
+          </>
+        ) : (
+          searchQuery.length === 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Recent Searches</Text>
+              <FlatList
+                data={recentSearches}
+                renderItem={renderRecentSearch}
+                keyExtractor={(item) => item}
+                showsVerticalScrollIndicator={false}
+              />
+            </>
+          )
+        )}
       </View>
     </View>
   );
@@ -107,6 +186,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginVertical: 10,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -124,6 +212,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.secondary,
     marginLeft: 10,
+  },
+  searchResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.gray,
+  },
+  searchResultContent: {
+    flex: 1,
+  },
+  symbolText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.secondary,
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: Colors.darkGray,
+    marginTop: 2,
   },
 });
 

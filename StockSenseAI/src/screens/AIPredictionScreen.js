@@ -10,7 +10,8 @@ import {
   Alert,
   Platform,
   StatusBar,
-  FlatList
+  FlatList,
+  RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
@@ -42,6 +43,7 @@ const AIPredictionScreen = ({ navigation }) => {
   const [recentPredictions, setRecentPredictions] = useState([]);
   const [loadingPredictions, setLoadingPredictions] = useState(false);
   const [activePredictionInfo, setActivePredictionInfo] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   
   const statusCheckInterval = useRef(null);
   const notificationListener = useRef();
@@ -333,19 +335,68 @@ const AIPredictionScreen = ({ navigation }) => {
     }
   };
   
+  // Function to refresh all data
+  const refreshData = async () => {
+    setRefreshing(true);
+    setError(null);
+    
+    try {
+      // Check active prediction status if there is one
+      if (activePredictionInfo) {
+        await checkPredictionStatus(activePredictionInfo.taskId);
+      }
+      
+      // Fetch recent predictions
+      await fetchRecentPredictions();
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  
+  // Pull-to-refresh handler
+  const handleRefresh = () => {
+    refreshData();
+  };
+  
   // Stop prediction
   const handleStopPrediction = async () => {
     const taskId = activePredictionInfo?.taskId || (prediction && prediction.taskId);
     if (!taskId) return;
     
     try {
-      await PredictionService.stopPrediction(taskId);
-      setIsLoading(false);
-      clearInterval(statusCheckInterval.current);
-      setError('Prediction stopped');
-      clearActivePrediction();
+      // First update UI to indicate stopping
+      setError("Stopping prediction...");
+      
+      // Call the API to stop the prediction
+      const response = await PredictionService.stopPrediction(taskId);
+      
+      if (response && (response.status === "stopped" || response.status === "stopping")) {
+        // Successfully requested stop
+        setIsLoading(false);
+        clearInterval(statusCheckInterval.current);
+        setError('Prediction stopped successfully');
+        
+        // Clear active prediction
+        clearActivePrediction();
+        
+        // Delay refresh to ensure backend has updated status
+        setTimeout(() => {
+          fetchRecentPredictions();
+        }, 2000);
+      } else {
+        setError('Could not stop prediction. Try again.');
+      }
     } catch (err) {
       console.error('Error stopping prediction:', err);
+      setError('Error stopping prediction: ' + (err.message || 'Unknown error'));
+      
+      // Even if there's an error, clear the active prediction from local storage
+      // This prevents the UI from getting stuck
+      clearActivePrediction();
+      setIsLoading(false);
+      clearInterval(statusCheckInterval.current);
     }
   };
   
@@ -449,9 +500,25 @@ const AIPredictionScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerText}>AI Stock Predictions</Text>
+        <TouchableOpacity 
+          style={styles.refreshButton}
+          onPress={refreshData}
+        >
+          <Ionicons name="refresh" size={24} color="white" />
+        </TouchableOpacity>
       </View>
       
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[Colors.primary]}
+            tintColor={Colors.primary}
+          />
+        }
+      >
         <Text style={styles.sectionTitle}>Enter Stock Details</Text>
         
         <View style={styles.inputContainer}>
@@ -638,14 +705,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   backButton: {
-    marginRight: 15,
+    padding: 5,
+  },
+  refreshButton: {
+    padding: 5,
   },
   headerText: {
     color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
   },
   content: {
     padding: 20,
