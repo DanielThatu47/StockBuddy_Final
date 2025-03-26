@@ -320,10 +320,29 @@ const AIPredictionScreen = ({ navigation }) => {
       setIsLoading(false);
       
       // Handle specific error messages
-      if (err.message?.includes('pending prediction')) {
+      if (err.message?.includes('Symbol') && err.message?.includes('not found')) {
+        const errorMessage = `Symbol '${symbol}' not found. Please verify the stock symbol is correct and from a supported exchange (NASDAQ or BSE).`;
+        setError(errorMessage);
+        
+        // Also show an alert for immediate visibility
+        Alert.alert(
+          'Symbol Not Found',
+          errorMessage,
+          [{ text: 'OK' }]
+        );
+      } else if (err.message?.includes('pending prediction')) {
         setError('You already have a pending prediction for this symbol. Please wait for it to complete or stop it first.');
       } else if (err.message?.includes('already exists')) {
         setError('A prediction with this ID already exists. Please try again in a moment.');
+      } else if (err.message?.includes('API request limit')) {
+        setError('API request limit reached. Please try again in a minute.');
+        
+        // Also show an alert for API limit errors
+        Alert.alert(
+          'API Limit Reached',
+          'API request limit reached. Please try again in a minute.',
+          [{ text: 'OK' }]
+        );
       } else {
         setError(err.message || 'Failed to start prediction. Please try again later.');
       }
@@ -339,6 +358,11 @@ const AIPredictionScreen = ({ navigation }) => {
   const refreshData = async () => {
     setRefreshing(true);
     setError(null);
+    
+    // Clear inputs when refreshing
+    setSymbol('');
+    setDaysAhead('5');
+    setPrediction(null);
     
     try {
       // Check active prediction status if there is one
@@ -533,6 +557,7 @@ const AIPredictionScreen = ({ navigation }) => {
             maxLength={10}
             editable={!isLoading}
           />
+          <Text style={styles.inputNote}>Currently supported: NASDAQ and BSE exchange symbols only</Text>
         </View>
         
         <View style={styles.inputContainer}>
@@ -744,6 +769,11 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     fontSize: 16,
+  },
+  inputNote: {
+    fontSize: 12,
+    color: '#757575',
+    marginTop: 5,
   },
   predictButton: {
     backgroundColor: Colors.primary,

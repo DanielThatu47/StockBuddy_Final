@@ -114,4 +114,45 @@ export const stopPrediction = async (taskId) => {
   } catch (error) {
     throw error;
   }
+};
+
+// Delete a single prediction
+export const deletePrediction = async (id) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_URL}/api/predictions/${id}`, {
+      method: 'DELETE',
+      headers
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to delete prediction');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Delete multiple predictions
+export const deleteMultiplePredictions = async (ids) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_URL}/api/predictions/delete-multiple`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to delete predictions');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
 }; 

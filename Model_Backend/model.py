@@ -39,8 +39,15 @@ def fetch_stock_data(symbol, outputsize="full"):
     response = requests.get(url, params=params)
     data = response.json()
     if "Time Series (Daily)" not in data:
-        print(f"Error fetching data for {symbol}. Check the API key or symbol.")
-        return None
+        if "Error Message" in data:
+            print(f"Error fetching data for symbol '{symbol}': {data['Error Message']}")
+            raise ValueError(f"Symbol '{symbol}' not found. Please verify the stock symbol is correct and from a supported exchange (NASDAQ or BSE).")
+        elif "Note" in data:
+            print(f"API limit reached: {data['Note']}")
+            raise ValueError(f"API request limit reached. Please try again in a minute.")
+        else:
+            print(f"Unknown error fetching data for '{symbol}'. Response: {data}")
+            raise ValueError(f"Unable to fetch data for symbol '{symbol}'. Please verify the stock symbol is correct.")
     ts = data["Time Series (Daily)"]
     df = pd.DataFrame.from_dict(ts, orient="index")
     df.index = pd.to_datetime(df.index)
@@ -228,16 +235,18 @@ def train_xgboost(X_train, residuals, stop_requested_callback=None):
     
     # New style callback implementation
     if stop_requested_callback:
-        class StopCallbackHandler:
+        class StopCallbackHandler(xgb.callback.TrainingCallback):
             def after_iteration(self, model, epoch, evals_log):
                 if stop_requested_callback():
                     print("XGBoost training stopped by user request")
-                    return False
-                return True
+                    return True  # True tells XGBoost to stop training
+                return False     # False tells XGBoost to continue training
         
         # Create the XGBoost model with callbacks in the constructor (new style)
         xgb_model = xgb.XGBRegressor(**params)
-        xgb_model.fit(X_train, residuals, callbacks=[StopCallbackHandler()])
+        # Pass callbacks as a list to set_params instead of in fit method
+        xgb_model.set_params(callbacks=[StopCallbackHandler()])
+        xgb_model.fit(X_train, residuals)
     else:
         # If no callback needed, just use normal training
         xgb_model = xgb.XGBRegressor(**params)

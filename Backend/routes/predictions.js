@@ -276,4 +276,92 @@ router.post('/stop/:taskId', auth, async (req, res) => {
   }
 });
 
+// Delete a single prediction by ID
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const prediction = await Prediction.findById(req.params.id);
+    
+    if (!prediction) {
+      return res.status(404).json({ message: 'Prediction not found' });
+    }
+    
+    // Check if the prediction belongs to the user
+    if (prediction.userId.toString() !== req.userId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    
+    // Check if we need to stop an active prediction
+    if (prediction.status === 'pending' || prediction.status === 'running') {
+      try {
+        // Call the model API to stop prediction
+        await fetch(`${MODEL_API_URL}/api/predict/stop/${prediction.taskId}`, {
+          method: 'POST'
+        });
+        // We don't need to wait for the response or handle errors here
+        // since we're deleting the prediction anyway
+      } catch (stopErr) {
+        console.error('Error stopping prediction before delete:', stopErr.message);
+        // Continue with deletion even if stopping fails
+      }
+    }
+    
+    await Prediction.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'Prediction deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting prediction:', err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete multiple predictions
+router.post('/delete-multiple', auth, async (req, res) => {
+  const { ids } = req.body;
+  
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ message: 'No prediction IDs provided' });
+  }
+  
+  try {
+    // Find all predictions that belong to the user
+    const predictions = await Prediction.find({
+      _id: { $in: ids },
+      userId: req.userId
+    });
+    
+    if (predictions.length === 0) {
+      return res.status(404).json({ message: 'No predictions found' });
+    }
+    
+    // Try to stop any active predictions
+    for (const prediction of predictions) {
+      if (prediction.status === 'pending' || prediction.status === 'running') {
+        try {
+          // Call the model API to stop prediction
+          await fetch(`${MODEL_API_URL}/api/predict/stop/${prediction.taskId}`, {
+            method: 'POST'
+          });
+        } catch (stopErr) {
+          console.error('Error stopping prediction before delete:', stopErr.message);
+          // Continue with deletion even if stopping fails
+        }
+      }
+    }
+    
+    // Delete all the predictions
+    await Prediction.deleteMany({
+      _id: { $in: ids },
+      userId: req.userId
+    });
+    
+    res.json({ 
+      message: 'Predictions deleted successfully',
+      count: predictions.length
+    });
+  } catch (err) {
+    console.error('Error deleting multiple predictions:', err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router; 
