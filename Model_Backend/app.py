@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+
 from flask_cors import CORS
 import numpy as np
 import pandas as pd
@@ -66,10 +67,20 @@ class PredictionTask:
                 return
             
             # Filter to ensure we only have enough data
-            if len(data) < 35:  # Reduced from 50 days since we're using time_step=30 now
+            if len(data) < 60:  # Increased minimum data requirement for more stable training
                 self.status = "failed"
                 self.result = {"error": f"Insufficient data available for {self.symbol}"}
                 return
+                
+            # Store the last closing price for reference
+            if isinstance(data, pd.DataFrame) and 'Close' in data.columns:
+                last_actual_close = float(data['Close'].iloc[-1])
+                last_date = data.index[-1]
+            else:
+                last_actual_close = float(data.iloc[-1, 0])  # Assume first column is Close
+                last_date = data.index[-1]
+                
+            print(f"Latest closing price for {self.symbol}: ${last_actual_close:.2f} on {last_date.strftime('%Y-%m-%d')}")
                 
             self.progress = 20
             if self.stop_requested:
@@ -105,8 +116,8 @@ class PredictionTask:
                 
             # Preprocess data for prediction with technical indicators
             scaled_data, scaler = stock_model.preprocess_data(data)
-            # Use smaller time step (30 instead of 45)
-            time_step = 30
+            # Use higher time_step for better sequence learning
+            time_step = 45
             print(f"Creating sequences with time_step={time_step}, data shape={scaled_data.shape}")
             X, y = stock_model.create_sequences(scaled_data, time_step)
             
@@ -132,6 +143,10 @@ class PredictionTask:
             X_train, y_train = X[:train_size], y[:train_size]
             print(f"Training LSTM with {len(X_train)} samples and {X_train.shape[2]} features")
             
+            # Set progress update for extended training
+            # Adjust progress reporting to account for longer training time
+            self.progress = 55
+            
             # Use improved LSTM model with stop callback
             lstm_model = stock_model.train_lstm(X_train, y_train, time_step, self.is_stop_requested)
             
@@ -141,7 +156,7 @@ class PredictionTask:
                 print(f"Prediction for {self.symbol} stopped after LSTM training")
                 return
                 
-            self.progress = 70
+            self.progress = 75
             if self.stop_requested:
                 self.status = "stopped"
                 return
@@ -168,7 +183,7 @@ class PredictionTask:
                 # Continue with LSTM-only predictions if XGBoost fails
                 xgb_model = None
                 
-            self.progress = 85
+            self.progress = 90
             if self.stop_requested:
                 self.status = "stopped"
                 return
@@ -203,7 +218,6 @@ class PredictionTask:
                 
             # Create prediction results with proper business day handling
             future_dates = []
-            last_date = data.index[-1]
             
             # Generate proper future dates (trading days only)
             for i in range(1, self.days_ahead + 1):
@@ -250,15 +264,27 @@ class PredictionTask:
             # Create the prediction data with formatted dates
             prediction_data = []
             for i in range(min(len(unique_future_dates), len(predictions))):
+                predicted_price = float(predictions[i][0])
+                
+                # Calculate percent change from last actual closing price
+                percent_change = ((predicted_price - last_actual_close) / last_actual_close) * 100
+                
                 prediction_data.append({
                     "date": unique_future_dates[i].strftime("%Y-%m-%d"),
-                    "price": float(predictions[i][0])
+                    "price": round(predicted_price, 2),
+                    "change": round(percent_change, 2)
                 })
             
+            # Include last actual closing price and date in the result
             self.result = {
                 "symbol": self.symbol,
+                "lastActualClose": {
+                    "date": last_date.strftime("%Y-%m-%d"),
+                    "price": round(last_actual_close, 2)
+                },
                 "predictions": prediction_data,
-                "sentiment": self.sentiment_result
+                "sentiment": self.sentiment_result,
+                "tableDisplay": True  # Flag to indicate frontend should display a table instead of a graph
             }
             self.progress = 100
             self.status = "completed"
@@ -390,7 +416,8 @@ def get_sentiment(symbol):
             "symbol": symbol,
             "sentiment": {
                 "totals": sentiment_totals,
-                "summary": sentiment_summary
+                "summary": sentiment_summary,
+                "period": 28  # Updated from 14 to 28 days
             }
         })
     except Exception as e:

@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 export const API_URL = 'http://192.168.91.238:5000';
 export const MODEL_BACKEND_URL = 'http://192.168.91.238:5001';
+=======
+export const API_URL = 'http://192.168.6.97:5000';
+export const MODEL_BACKEND_URL = 'http://192.168.6.97:5001';
+>>>>>>> 7f8ec82238fb632c29669df0f0685d99d48abf13
 export const FINNHUB_API_KEY = process.env.REACT_APP_FINNHUB_API_KEY;
 export const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query';
 export const ALPHA_VANTAGE_API_KEY = process.env.REACT_APP_ALPHA_VANTAGE_API_KEY;
