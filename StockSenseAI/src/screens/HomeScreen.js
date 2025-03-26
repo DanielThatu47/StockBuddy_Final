@@ -67,7 +67,7 @@ const HomeScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Header
-        title="StockSense AI"
+        title="StockBuddy"
         subtitle="Smart Stock Predictions"
         onSearchPress={() => navigation.navigate('Search')}
       >
