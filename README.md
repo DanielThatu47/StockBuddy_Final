@@ -108,8 +108,4 @@ chmod +x start.sh
 
 For development, you can run each component separately. For production, consider using Docker or a similar containerization solution to manage all three services.
 
-<<<<<<< HEAD
-=======
-## License
->>>>>>> bebc2e9 (hello)
 
