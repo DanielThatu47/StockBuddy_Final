@@ -1,16 +1,17 @@
 {
-  "version": 2,
   "builds": [
     {
-      "src": "app.py",
+      "src": "Model_Backend/app.py",
       "use": "@vercel/python",
-      "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
+      "config": {
+        "runtime": "python3.11"
+      }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "app.py"
+      "dest": "Model_Backend/app.py"
     }
   ]
 }
