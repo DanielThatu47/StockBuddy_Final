@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Using 10.0.2.2 which is the special IP for the Android emulator to access the localhost of the host machine
 
 const BASE_URL = 'http://192.168.91.238:5000/api';
-=======
+
 const BASE_URL = 'http://192.168.6.97:5000/api';
 
 /**
