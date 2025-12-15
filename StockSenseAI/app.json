@@ -1,5 +1,42 @@
 {
   "expo": {
+    "name": "StockBuddy",
+    "slug": "stockbuddy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.danielthatu47.StockSenseAI",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.danielthatu47.StockSenseAI"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f842fa32-31ad-44c3-a9e6-f1a93adb0b3e"
+      }
+    }
+  }
+}{
+  "expo": {
     "name": "StockSenseAI",
     "slug": "StockSenseAI",
     "version": "1.0.0",
